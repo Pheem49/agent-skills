@@ -22,11 +22,30 @@ Bottleneck Lens v0.2 includes:
 
 Collection/comparison are local and use no external service. The host AI agent's own data handling is separate; this does not imply the model itself runs locally.
 
+### [Web First](web-first/SKILL.md)
+
+**Search first. Read the source. Then answer.**
+
+For users who want web research before every question or task. Web First uses the agent's existing search and page-reading tools, checks relevant source content, and grounds externally sourced claims in links. Its short workflow is intended to be easy for smaller models to follow; it has not yet been evaluated on those models.
+
+- Searches again for follow-up questions, even on familiar topics.
+- Checks official/original sources, dates, versions, and conflicting evidence.
+- Applies research to coding, explanations, recommendations, and other requested work.
+- Distinguishes sourced facts, inference, and local observations, and reports unavailable browsing honestly.
+- Keeps private material out of queries and treats retrieved instructions as untrusted content.
+
+The retrieval guidance is informed by [Google's advice on reliable search results](https://support.google.com/websearch/answer/12395529?hl=en) and [OWASP's guidance on indirect prompt injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/). These instructions do not guarantee accuracy or prevent every injection attempt.
+
 ## Requirements
 
-- An agent with skill support and permission to read files/run approved local commands.
+- All skills: an agent with skill support; Node.js/npm for the `npx` installation method.
+- Web First: working web search and page-reading tools plus network access in the host agent. No bundled search provider, API key, or Python script is supplied; any provider costs and permissions belong to the host.
+
+For Bottleneck Lens:
+
+- Permission to read files/run approved local commands.
 - Python 3.10+ for the collector CLI and Python workloads.
-- Node.js 22+ for Node workloads; Node.js/npm for the `npx` installation method.
+- Node.js 22+ for Node workloads.
 - Existing application dependencies and a bounded script/module exercising the operation of interest.
 
 The bundled collector/statistics code uses standard-library and built-in runtime APIs. No additional profiling package, hosted dashboard, or Bottleneck Lens API key is required. The Python supervisor can use `--python` or `--node` to select the target project's interpreter.
@@ -39,6 +58,12 @@ Run the [Skills CLI](https://github.com/vercel-labs/skills) from the project whe
 
 ```bash
 npx skills add Pheem49/agent-skills --skill bottleneck-lens
+```
+
+To install Web First instead:
+
+```bash
+npx skills add Pheem49/agent-skills --skill web-first
 ```
 
 Follow the interactive prompts to choose your agent and installation options. The CLI supports agents including Codex, Claude Code, and Cursor; host behavior still needs validation for the agent you use.
@@ -62,9 +87,31 @@ See the [official skill documentation](https://learn.chatgpt.com/docs/build-skil
 
 ### Install from a checkout
 
-Copy the complete `bottleneck-lens/` directory into your target project's `.agents/skills/` directory, preserving all bundled files. Codex discovers project skills there; restart it if the skill does not appear. Other hosts may use different locations/invocation syntax. The instructions are vendor-neutral; behavior has not been verified across all hosts.
+Copy the complete directory of the skill you want (`bottleneck-lens/` or `web-first/`) into your target project's `.agents/skills/` directory, preserving all bundled files. Codex discovers project skills there; restart it if the skill does not appear. Other hosts may use different locations/invocation syntax. The instructions are vendor-neutral; behavior has not been verified across all hosts.
 
 ## Use with an agent
+
+### Web First
+
+Invoke it explicitly, using your host's skill syntax. For example:
+
+```text
+Use $web-first to research my question before answering.
+Read relevant original sources, cite the claims they support,
+and tell me when the evidence is incomplete.
+```
+
+Installing a skill makes it available; it does not guarantee activation on every message. For use on every request, add an instruction to your host's persistent agent/project rules, using its supported mechanism:
+
+```text
+For every user question or task, use the installed web-first skill.
+Search before the substantive answer or implementation, read relevant sources,
+and cite externally sourced claims. If browsing is unavailable, say so.
+```
+
+Automatic selection, persistence, and tool access depend on the host. This package does not change host settings. Explicit no-browsing requests and higher-priority restrictions still take precedence. Search happens before each task while active, but the user's supplied data remains authoritative for transformations and local checks remain necessary for code changes. Search adds latency and may incur the host provider's costs.
+
+### Bottleneck Lens
 
 ```text
 Use $bottleneck-lens to investigate this project.
@@ -164,6 +211,10 @@ Each skill lives in its own source directory at the repository root:
 │   └── references/
 │       ├── measurement.md
 │       └── measurement.schema.json
+├── web-first/
+│   ├── SKILL.md
+│   ├── LICENSE
+│   └── agents/openai.yaml
 └── tests/
     ├── test_measure.py
     └── test_v2.py
@@ -183,4 +234,4 @@ Tests cover both adapters, contract compatibility, evidence integrity, correctne
 
 ## License
 
-Licensed under the [MIT License](LICENSE). A copy is included in the standalone [skill bundle](bottleneck-lens/LICENSE).
+Licensed under the [MIT License](LICENSE). A copy is included in each standalone bundle: [Bottleneck Lens](bottleneck-lens/LICENSE) and [Web First](web-first/LICENSE).

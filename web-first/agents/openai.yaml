@@ -1,0 +1,4 @@
+interface:
+  display_name: "Web First"
+  short_description: "Search the web first and answer with checked sources"
+  default_prompt: "Use $web-first to search before handling my request, read relevant sources, and ground your answer or implementation in the evidence."
