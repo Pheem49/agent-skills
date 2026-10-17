@@ -1,4 +1,10 @@
-# Bottleneck Lens
+# Agent Skills
+
+A collection of reusable AI agent skills. Each skill has its own source directory, instructions, and supporting resources.
+
+## Available skills
+
+### [Bottleneck Lens](bottleneck-lens/SKILL.md)
 
 **Find the bottleneck. Prove the improvement.**
 
@@ -6,7 +12,7 @@ An AI agent skill for finding performance bottlenecks in Python applications usi
 
 Bottleneck Lens gives an agent a repeatable workflow and a local measurement script. The agent inspects the project, agrees on a representative workload, collects evidence, explains likely causes, and verifies authorized changes. If measurements are unavailable, it labels its findings as hypotheses.
 
-## What it does
+## What Bottleneck Lens does
 
 - Guides project inspection and selection of a bounded, reproducible workload.
 - Collects uninstrumented wall time and process CPU time across repeated runs.
@@ -18,7 +24,7 @@ Bottleneck Lens gives an agent a repeatable workflow and a local measurement scr
 
 The collector produces JSON. The agent interprets the evidence and writes the Markdown report; the script itself does not automatically diagnose or rewrite application code.
 
-## Requirements
+## Requirements for Bottleneck Lens
 
 - An agent with skill support and permission to read files and run local commands.
 - Python 3.10+ in the target project's existing environment.
@@ -35,7 +41,7 @@ With Node.js and npm available, run the [Skills CLI](https://github.com/vercel-l
 Run this command from the project where you want to use the skill:
 
 ```bash
-npx skills add Pheem49/bottleneck-lens --skill bottleneck-lens
+npx skills add Pheem49/agent-skills --skill bottleneck-lens
 ```
 
 Follow the interactive prompts to choose your agent and installation options. The CLI supports agents including Codex, Claude Code, and Cursor. Host behavior still needs validation for the agent you use. Node.js/npm are needed for this installation method; the bundled collector runs in Python.
@@ -43,7 +49,7 @@ Follow the interactive prompts to choose your agent and installation options. Th
 To inspect available skills before installing:
 
 ```bash
-npx skills add Pheem49/bottleneck-lens --list
+npx skills add Pheem49/agent-skills --list
 ```
 
 ### Codex: install from GitHub
@@ -52,7 +58,7 @@ Ask Codex to install the skill from this repository:
 
 ```text
 Use $skill-installer to install the skill from
-https://github.com/Pheem49/bottleneck-lens/tree/main/bottleneck-lens
+https://github.com/Pheem49/agent-skills/tree/main/bottleneck-lens
 ```
 
 The installation URL points to the `main` branch. Codex supports installing skills from other repositories through the skill installer. See the [official skill documentation](https://learn.chatgpt.com/docs/build-skills) for discovery and installation details.
@@ -153,6 +159,35 @@ The skill instructs the agent to obtain authorization before executing unfamilia
 Collection and comparison run locally. The scripts do not upload source or measurement artifacts. The host AI agent's own data handling is separate; local collection does not imply that the AI model itself runs locally.
 
 The workload inherits the environment and runs with the user's permissions. Process separation and timeouts are not a sandbox. Reports contain paths and arguments: keep credentials out of command-line arguments and workload IDs. Target stdout is suppressed, while stderr is inherited.
+
+## Repository layout
+
+This repository keeps each skill in its own directory at the repository root. The current source layout is:
+
+```text
+.
+├── README.md
+├── LICENSE
+├── .gitignore
+├── bottleneck-lens/
+│   ├── SKILL.md
+│   ├── LICENSE
+│   ├── agents/openai.yaml
+│   ├── scripts/measure.py
+│   └── references/measurement.md
+└── tests/
+    └── test_measure.py
+```
+
+### Add another skill
+
+Create a new directory beside `bottleneck-lens/`, named after the new skill. For example, a skill named `new-skill` would have its own `new-skill/SKILL.md`. This is an example name, not a bundled skill.
+
+Each skill needs a `SKILL.md` with its own unique `name`, a precise `description`, and instructions for its workflow. Add `scripts/`, `references/`, or `assets/` only when that skill needs them. Include the applicable license with any standalone bundle. Put behavioral tests in `tests/` and document the new skill's purpose and usage in this README.
+
+Skills for different workflows can live side by side in this collection. Keep each skill focused on its own task and keep the existing `bottleneck-lens/` path stable so published installation links continue to work.
+
+The `.agents/skills/` directory holds local installed copies used to try skills in this checkout. Edit the source directories at the repository root when developing skills. Local installed copies and the root `skills-lock.json` are ignored by Git here to keep this distribution repository focused on skill sources.
 
 ## Development
 

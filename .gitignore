@@ -1,0 +1,7 @@
+# Local installations used to try skills in this checkout.
+/.agents/skills/
+/skills-lock.json
+
+# Python bytecode generated while developing skills.
+__pycache__/
+*.py[cod]
