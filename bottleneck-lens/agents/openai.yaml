@@ -1,0 +1,4 @@
+interface:
+  display_name: "Bottleneck Lens"
+  short_description: "Find Python bottlenecks and measure before/after results"
+  default_prompt: "Use $bottleneck-lens to find measured Python bottlenecks and verify before/after performance for an approved workload."
