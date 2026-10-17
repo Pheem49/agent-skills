@@ -28,6 +28,24 @@ The collector uses only the Python standard library. Application dependencies mu
 
 ## Install
 
+### Install with npx
+
+With Node.js and npm available, run the [Skills CLI](https://github.com/vercel-labs/skills) in your terminal. It downloads the skill directly from this GitHub repository.
+
+Run this command from the project where you want to use the skill:
+
+```bash
+npx skills add Pheem49/bottleneck-lens --skill bottleneck-lens
+```
+
+Follow the interactive prompts to choose your agent and installation options. The CLI supports agents including Codex, Claude Code, and Cursor. Host behavior still needs validation for the agent you use. Node.js/npm are needed for this installation method; the bundled collector runs in Python.
+
+To inspect available skills before installing:
+
+```bash
+npx skills add Pheem49/bottleneck-lens --list
+```
+
 ### Codex: install from GitHub
 
 Ask Codex to install the skill from this repository:
