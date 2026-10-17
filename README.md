@@ -30,14 +30,14 @@ The collector uses only the Python standard library. Application dependencies mu
 
 ### Codex: install from GitHub
 
-After this repository is published, replace `OWNER/REPO` below with its actual GitHub owner and repository name. Ask Codex:
+Ask Codex to install the skill from this repository:
 
 ```text
 Use $skill-installer to install the skill from
-https://github.com/OWNER/REPO/tree/main/bottleneck-lens
+https://github.com/Pheem49/bottleneck-lens/tree/main/bottleneck-lens
 ```
 
-This example assumes the default branch is `main`; change it if needed. Codex supports installing skills from other repositories through the skill installer. See the [official skill documentation](https://learn.chatgpt.com/docs/build-skills) for discovery and installation details.
+The installation URL points to the `main` branch. Codex supports installing skills from other repositories through the skill installer. See the [official skill documentation](https://learn.chatgpt.com/docs/build-skills) for discovery and installation details.
 
 ### Install from a downloaded or cloned checkout
 
