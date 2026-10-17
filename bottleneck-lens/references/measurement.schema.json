@@ -1,0 +1,529 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Bottleneck Lens measurement v2",
+  "description": "Common Python/Node collector contract. The bundled validator additionally checks sample counts, matching metric keys, correctness observations, evidence hashes, and compatibility; cached summaries are recomputed.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "created_utc",
+    "collector",
+    "workload",
+    "revision",
+    "source_fingerprints",
+    "environment",
+    "cwd",
+    "target",
+    "mode",
+    "inputs",
+    "protocol",
+    "metrics",
+    "samples",
+    "summary",
+    "details",
+    "correctness",
+    "artifacts",
+    "request",
+    "executed_commands",
+    "rerun_command"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "kind": {
+      "const": "measurement"
+    },
+    "created_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "workload": {
+      "type": "string",
+      "minLength": 1
+    },
+    "revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cwd": {
+      "type": "string",
+      "minLength": 1
+    },
+    "collector": {
+      "type": "object",
+      "required": [
+        "name",
+        "version",
+        "adapter",
+        "files"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "adapter": {
+          "type": "string",
+          "minLength": 1
+        },
+        "files": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "source_fingerprints": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      }
+    },
+    "environment": {
+      "type": "object",
+      "required": [
+        "runtime",
+        "host",
+        "settings",
+        "dependency_files"
+      ],
+      "properties": {
+        "runtime": {
+          "type": "object",
+          "required": [
+            "name",
+            "version",
+            "executable"
+          ],
+          "properties": {
+            "name": {
+              "enum": [
+                "python",
+                "node"
+              ]
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "executable": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "host": {
+          "type": "object"
+        },
+        "settings": {
+          "type": "object"
+        },
+        "dependency_files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "required": [
+        "kind",
+        "value",
+        "args"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "script",
+            "module"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "mode": {
+      "enum": [
+        "benchmark",
+        "cpu",
+        "memory"
+      ]
+    },
+    "inputs": {
+      "type": "object",
+      "required": [
+        "dataset",
+        "seed",
+        "files",
+        "cache_policy"
+      ],
+      "properties": {
+        "dataset": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seed": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "cache_policy": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "protocol": {
+      "type": "object",
+      "required": [
+        "runs",
+        "warmups",
+        "timeout_seconds",
+        "fresh_process"
+      ],
+      "properties": {
+        "runs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "warmups": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "timeout_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "fresh_process": {
+          "const": true
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "minProperties": 2,
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "unit",
+          "direction",
+          "comparable",
+          "scope"
+        ],
+        "properties": {
+          "unit": {
+            "enum": [
+              "seconds",
+              "bytes",
+              "ratio"
+            ]
+          },
+          "direction": {
+            "enum": [
+              "lower",
+              "higher",
+              "neutral"
+            ]
+          },
+          "comparable": {
+            "type": "boolean"
+          },
+          "scope": {
+            "type": "object",
+            "required": [
+              "process",
+              "threads",
+              "children",
+              "interval",
+              "interpreter_startup_included",
+              "shutdown_hooks_included",
+              "instrumentation"
+            ],
+            "properties": {
+              "process": {
+                "type": "string",
+                "minLength": 1
+              },
+              "threads": {
+                "type": "string",
+                "minLength": 1
+              },
+              "children": {
+                "type": "string",
+                "minLength": 1
+              },
+              "interval": {
+                "type": "string",
+                "minLength": 1
+              },
+              "instrumentation": {
+                "type": "string",
+                "minLength": 1
+              },
+              "interpreter_startup_included": {
+                "type": "boolean"
+              },
+              "shutdown_hooks_included": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    "samples": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "wall_seconds",
+          "cpu_seconds"
+        ],
+        "additionalProperties": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "summary": {
+      "type": "object"
+    },
+    "details": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "correctness": {
+      "type": "object",
+      "required": [
+        "method",
+        "status",
+        "oracle_sha256",
+        "observations"
+      ],
+      "properties": {
+        "method": {
+          "enum": [
+            "none",
+            "expected_stdout_sha256"
+          ]
+        },
+        "status": {
+          "enum": [
+            "not_assessed",
+            "passed",
+            "failed"
+          ]
+        },
+        "oracle_sha256": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "run",
+              "path",
+              "stdout_sha256"
+            ],
+            "properties": {
+              "run": {
+                "type": "string",
+                "minLength": 1
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "stdout_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "role",
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "role": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "request": {
+      "type": "object"
+    },
+    "executed_commands": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "rerun_command": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "memory"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "environment": {
+            "properties": {
+              "runtime": {
+                "properties": {
+                  "name": {
+                    "const": "python"
+                  }
+                }
+              }
+            }
+          },
+          "samples": {
+            "items": {
+              "required": [
+                "python_peak_bytes",
+                "python_current_bytes"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "correctness": {
+            "properties": {
+              "method": {
+                "const": "none"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "correctness": {
+            "properties": {
+              "status": {
+                "const": "not_assessed"
+              },
+              "oracle_sha256": {
+                "type": "null"
+              },
+              "observations": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "correctness": {
+            "properties": {
+              "method": {
+                "const": "expected_stdout_sha256"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "correctness": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "passed",
+                  "failed"
+                ]
+              },
+              "oracle_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "observations": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

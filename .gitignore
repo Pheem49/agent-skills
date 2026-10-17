@@ -5,3 +5,6 @@
 # Python bytecode generated while developing skills.
 __pycache__/
 *.py[cod]
+
+# Local benchmark/demo evidence; keep reports out of distribution commits.
+/results/

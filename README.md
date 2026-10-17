@@ -8,43 +8,40 @@ A collection of reusable AI agent skills. Each skill has its own source director
 
 **Find the bottleneck. Prove the improvement.**
 
-An AI agent skill for finding performance bottlenecks in Python applications using runtime measurements, then comparing results before and after an optimization.
+Profile Python and Node.js workloads using runtime evidence, compare equivalent before/after measurements, and check whether an optimization preserves the expected output. The agent interprets findings and proposes authorized changes; bundled tools provide repeatable collection, comparison, and local reports.
 
-Bottleneck Lens gives an agent a repeatable workflow and a local measurement script. The agent inspects the project, agrees on a representative workload, collects evidence, explains likely causes, and verifies authorized changes. If measurements are unavailable, it labels its findings as hypotheses.
+Bottleneck Lens v0.2 includes:
 
-## What Bottleneck Lens does
+- A [shared JSON measurement contract](bottleneck-lens/references/measurement.schema.json) with raw samples, runtime/input identities, units, and explicit process/thread/startup boundaries.
+- Python wall/CPU benchmarks, `cProfile` function evidence, and `tracemalloc` allocation profiles.
+- Node ESM/CommonJS benchmarks, V8 CPU profiles, and event-loop diagnostics with `perf_hooks`.
+- Exact stdout checks against an independently supplied known answer, with retained per-run evidence.
+- Separate observed changes, practical thresholds, and statistical evidence; optional CI failure on supported practical regressions.
+- Markdown reports, persistent artifact directories, and recorded requests for rerunning experiments.
+- A generated known-answer demonstration covering a real optimization, an unchanged-code control, and an intentionally wrong fast implementation.
 
-- Guides project inspection and selection of a bounded, reproducible workload.
-- Collects uninstrumented wall time and process CPU time across repeated runs.
-- Records function call counts, callers, and self/cumulative times with `cProfile`.
-- Measures Python allocation peaks and live allocation locations with `tracemalloc`.
-- Records process lifetime peak RSS on Linux and macOS.
-- Compares compatible before/after artifacts, preserving raw samples and variability.
-- Guides correctness checks and regression checks before calling an improvement verified.
+Collection/comparison are local and use no external service. The host AI agent's own data handling is separate; this does not imply the model itself runs locally.
 
-The collector produces JSON. The agent interprets the evidence and writes the Markdown report; the script itself does not automatically diagnose or rewrite application code.
+## Requirements
 
-## Requirements for Bottleneck Lens
+- An agent with skill support and permission to read files/run approved local commands.
+- Python 3.10+ for the collector CLI and Python workloads.
+- Node.js 22+ for Node workloads; Node.js/npm for the `npx` installation method.
+- Existing application dependencies and a bounded script/module exercising the operation of interest.
 
-- An agent with skill support and permission to read files and run local commands.
-- Python 3.10+ in the target project's existing environment.
-- A finite Python script or module that exercises the operation to investigate.
-
-The collector uses only the Python standard library. Application dependencies must already be available in the selected environment. No additional profiling package, hosted dashboard, or Bottleneck Lens API key is required.
+The bundled collector/statistics code uses standard-library and built-in runtime APIs. No additional profiling package, hosted dashboard, or Bottleneck Lens API key is required. The Python supervisor can use `--python` or `--node` to select the target project's interpreter.
 
 ## Install
 
 ### Install with npx
 
-With Node.js and npm available, run the [Skills CLI](https://github.com/vercel-labs/skills) in your terminal. It downloads the skill directly from this GitHub repository.
-
-Run this command from the project where you want to use the skill:
+Run the [Skills CLI](https://github.com/vercel-labs/skills) from the project where you want to use the skill:
 
 ```bash
 npx skills add Pheem49/agent-skills --skill bottleneck-lens
 ```
 
-Follow the interactive prompts to choose your agent and installation options. The CLI supports agents including Codex, Claude Code, and Cursor. Host behavior still needs validation for the agent you use. Node.js/npm are needed for this installation method; the bundled collector runs in Python.
+Follow the interactive prompts to choose your agent and installation options. The CLI supports agents including Codex, Claude Code, and Cursor; host behavior still needs validation for the agent you use.
 
 To inspect available skills before installing:
 
@@ -54,115 +51,98 @@ npx skills add Pheem49/agent-skills --list
 
 ### Codex: install from GitHub
 
-Ask Codex to install the skill from this repository:
+Ask Codex:
 
 ```text
 Use $skill-installer to install the skill from
 https://github.com/Pheem49/agent-skills/tree/main/bottleneck-lens
 ```
 
-The installation URL points to the `main` branch. Codex supports installing skills from other repositories through the skill installer. See the [official skill documentation](https://learn.chatgpt.com/docs/build-skills) for discovery and installation details.
+See the [official skill documentation](https://learn.chatgpt.com/docs/build-skills) for discovery/installation details.
 
-### Install from a downloaded or cloned checkout
+### Install from a checkout
 
-Copy the complete `bottleneck-lens/` directory, including its `scripts/`, `references/`, and `agents/` directories, into the target project's `.agents/skills/` directory:
-
-```text
-your-project/
-└── .agents/
-    └── skills/
-        └── bottleneck-lens/
-            ├── SKILL.md
-            ├── LICENSE
-            ├── agents/openai.yaml
-            ├── references/measurement.md
-            └── scripts/measure.py
-```
-
-Copy the skill folder, rather than the entire repository. Codex discovers project skills in `.agents/skills`; if the skill does not appear, restart Codex. Other agents may use a different installation location and invocation syntax. The core instructions are vendor-neutral, but installation and behavior have not been verified across all agent products.
+Copy the complete `bottleneck-lens/` directory into your target project's `.agents/skills/` directory, preserving all bundled files. Codex discovers project skills there; restart it if the skill does not appear. Other hosts may use different locations/invocation syntax. The instructions are vendor-neutral; behavior has not been verified across all hosts.
 
 ## Use with an agent
 
-After installation, try:
-
 ```text
-Use $bottleneck-lens to investigate this Python project.
-First inspect the code and propose a representative workload, the exact
-commands, run counts, timeouts, and output paths. Ask before executing
+Use $bottleneck-lens to investigate this project.
+First inspect the code and propose a representative workload, exact commands,
+run counts, timeouts, and a durable results directory. Ask before executing
 unfamiliar repository code. Report measured bottlenecks with evidence.
 Propose optimizations, but ask before changing application code.
 ```
 
-Once the workload is approved, the workflow is:
+The workflow saves an uninstrumented baseline, collects separate diagnostic profiles, explains observed facts/hypotheses, applies only authorized changes, checks correctness, and repeats comparable measurements. Default benchmark and Python allocation collections each execute one discarded warmup and seven recorded runs, each in a fresh process; CPU profiles execute once without warmup. Warmup does not preserve application state for later processes.
 
-1. Save an uninstrumented baseline benchmark.
-2. Collect CPU and memory profiles in separate runs.
-3. Explain observed bottlenecks, hypotheses, proposed changes, and tradeoffs.
-4. Apply an optimization only within the user's authorization.
-5. Run correctness checks, repeat equivalent measurements, and compare results.
+## Collect, rerun, and compare
 
-The default benchmark invokes the workload eight times: one discarded warmup and seven recorded samples, each in a new process. CPU and memory profiles each add one invocation. A warmup in a separate process does not warm the next process's application state.
-
-## Run the collector directly
-
-From this repository's root, using the target project's interpreter, collect a baseline for a reviewed workload:
+Resolve `SKILL_DIR` to the installed skill directory. These commands execute the selected workload: review and authorize it first. Replace example paths/fixtures and create the output parent directory in advance.
 
 ```bash
-python bottleneck-lens/scripts/measure.py measure \
-  --cwd /path/to/project \
-  --script workload.py \
-  --workload fixture-v1-seed42 \
-  --revision before \
-  --mode benchmark \
-  --runs 7 \
-  --warmups 1 \
-  --timeout 30 \
-  --output /path/to/existing-results/before.json
+python "$SKILL_DIR/scripts/measure.py" measure \
+  --cwd /path/to/project --script workload.mjs --runtime node \
+  --workload fixture-v1 --dataset fixture-v1 --input fixtures/input.json \
+  --expected-stdout fixtures/expected.txt --revision before \
+  --output /path/to/results/before.json
 ```
 
-Replace the example paths and workload identity. Output parent directories must already exist; existing files are never overwritten. Use `--module package.module` instead of `--script` for module entrypoints. Put workload arguments after `--`. Select `--mode cpu` or `--mode memory` for a separate diagnostic run and give each artifact a fresh name.
+For Python use `--script workload.py --runtime python`, or `--module package.module`. An oracle is optional; without `--expected-stdout`, correctness stays `not_assessed` and the automated comparison cannot certify improvement. A supplied oracle checks exact stdout bytes on every invocation and covers only the behavior those bytes establish.
 
-After an authorized optimization, repeat the benchmark with the same workload and collection settings, `--revision after`, and a fresh `after.json` path. Then compare:
+For a diagnostic profile, repeat the collection command with `--mode cpu` and a fresh output name. Python additionally supports `--mode memory`, with repeated fresh-process samples controlled by `--runs` and `--warmups` for allocation comparisons. Diagnostic timings cannot replace uninstrumented benchmark timings. Node uses a collector preload and runs scripts as real entrypoints, preserving CommonJS main guards.
+
+After an authorized change:
 
 ```bash
-python bottleneck-lens/scripts/measure.py compare \
-  /path/to/existing-results/before.json \
-  /path/to/existing-results/after.json \
-  --output /path/to/existing-results/comparison.json
+python "$SKILL_DIR/scripts/measure.py" rerun /path/to/results/before.json \
+  --revision after --output /path/to/results/after.json
+python "$SKILL_DIR/scripts/measure.py" compare \
+  /path/to/results/before.json /path/to/results/after.json \
+  --output /path/to/results/comparison.json
 ```
 
-Comparison does not execute the workload. It rejects mismatched workload identities, targets, arguments, environments, and collection protocols. It reports observed changes; it does not certify correctness or statistical significance. Negative percentage changes mean less time or memory. Memory profiles can be compared separately; CPU profile timing is diagnostic and is not accepted as a benchmark comparison.
+`rerun` executes the current target code using the recorded request and rechecks inputs, recorded environment settings, dependency files, and runtime identity; it does not restore historical source. `compare` executes no workload and rejects incompatible runtimes, inputs, metric scopes/units, collector versions, protocols, or output oracles. Version-1/ad-hoc measurements must be recollected because their missing boundaries cannot safely be inferred.
 
-See the [measurement guide](bottleneck-lens/references/measurement.md) for metric definitions, measurement boundaries, and additional tool selection.
+Each run produces JSON, a Markdown report, and an adjacent `.artifacts/` directory containing evidence. Nothing is overwritten. Keep JSON and evidence together, including when moving results. A failed workload leaves diagnostic files but no successful measurement JSON. Reports lead with findings/evidence/next steps and include exact rerun commands. The agent adds project-specific interpretation in the user's language.
 
-## Understanding the result
+## Interpreting comparisons
 
-A useful agent report includes the workload and environment, evidence for each finding, before/after sample statistics, correctness check results, resource tradeoffs, and untested scenarios. JSON artifacts retain the underlying measurements.
+Observed median/mean changes, practical impact, statistical support, and correctness are separate fields. Defaults use a 5% practical threshold, five samples per group, alpha 0.05, and a two-sided permutation test of mean differences with Holm correction across compared metrics. These are configurable experiment policies, not universal definitions of a useful improvement. No outliers are silently removed. Range overlap is descriptive, not the statistical test.
 
-An observed reduction in runtime is not automatically a verified optimization. Equivalent workloads, repeat measurements, and passed correctness checks are required. Regression coverage extends only to the scenarios actually tested. No performance improvement percentage is promised in advance.
+- `verified_improvement`: a supported practical primary-metric gain, matching passed output oracles, and no supported practical regression among the compared metrics. Coverage is limited to this workload/output.
+- `observed_improvement`: a supported practical primary-metric gain with correctness unassessed.
+- `correctness_failed`: an oracle failed; speed gains cannot count as a verified optimization.
+- `regression`, `below_practical_threshold`, or `inconclusive`: inspect the evidence, resource tradeoffs, and experiment conditions before acting. Inconclusive does not establish equivalence.
 
-## Scope and limitations
+Use `compare --fail-on-regression` to exit 1 for a supported practical regression. Correctness failures exit 3; invalid/incompatible inputs and failed workloads exit 2. Exit 0 includes inconclusive results and does not certify improvement. Select thresholds before viewing results; use `--policy` for per-metric relative/absolute criteria.
 
-This is a Python-first MVP for scripts and modules that finish. APIs and background workers need a bounded driver that exercises the relevant operation.
+Permutation evidence assumes independent, exchangeable observations under the null. System drift, cache evolution, and background load may violate this assumption. Repeat or interleave controlled A/B runs when needed. The method is documented alongside the [measurement contract and statistical policy](bottleneck-lens/references/measurement.md); it does not implement pyperf's t-test.
 
-- The bundled collector does not provide HTTP load testing, live process attachment, I/O byte counters, database query counts, or process-tree resource accounting.
-- `tracemalloc` measures Python-tracked allocations, which can exclude native allocations. A final snapshot shows live allocations, not every transient allocation or proof of a leak.
-- Peak RSS covers the worker process lifetime, including interpreter/collector startup. It excludes child processes and is available only on Linux/macOS.
-- Timed execution excludes interpreter startup and shutdown hooks. Collector-preloaded modules affect import costs, so this is not a faithful application startup benchmark.
-- `cProfile` and allocation tracing add overhead. Their timings are kept separate from uninstrumented benchmarks. CPU profiles cover the executing thread, not every application thread.
-- Matching metadata cannot establish identical datasets, installed dependencies, cache state, or background load. Record those conditions separately.
+## Try the full known-answer experiment
 
-## Execution and privacy
+With an existing results parent directory:
 
-The skill instructs the agent to obtain authorization before executing unfamiliar repository code and before modifying application code unless that scope is already authorized. These are agent instructions, not an interactive permission system inside the script. Running the collector directly executes the selected workload.
+```bash
+python "$SKILL_DIR/scripts/demo.py" --runtime node --output-dir /path/to/results/node-demo
+python "$SKILL_DIR/scripts/demo.py" --runtime python --output-dir /path/to/results/python-demo
+```
 
-Collection and comparison run locally. The scripts do not upload source or measurement artifacts. The host AI agent's own data handling is separate; local collection does not imply that the AI model itself runs locally.
+The demo creates its own local workspace and replaces repeated list/array lookups with set lookups. It preserves the baseline, profile, optimized result, unchanged-code control, wrong-answer result, correctness evidence, and source snapshots. The unchanged control's actual result is retained rather than forced to appear inconclusive; deterministic synthetic noisy controls are tested separately. Results describe generated examples, not a performance promise for real applications. The demo workspace ends with the intentionally wrong implementation; historical source copies are retained beside the reports.
 
-The workload inherits the environment and runs with the user's permissions. Process separation and timeouts are not a sandbox. Reports contain paths and arguments: keep credentials out of command-line arguments and workload IDs. Target stdout is suppressed, while stderr is inherited.
+## Measurement and execution boundaries
+
+- Time excludes interpreter startup and later shutdown hooks. Preloaded modules alter import costs. Python runpy-to-return and Node preload-to-exit are distinct measurement intervals, not faithful application-startup or HTTP-latency benchmarks.
+- CPU and RSS exclude child processes. RSS is a process-lifetime high-water mark, not total process-tree RAM. Python reports RSS on Linux/macOS; Node uses `process.resourceUsage()`.
+- Python allocation tracing can miss native allocations. Final live allocations do not explain every transient peak or prove a leak. Node allocation profiling is not implemented.
+- Node CPU profiles are main-isolate sampled stacks, include collector startup, and do not show native child stacks. Event-loop diagnostics are separate from benchmarks. Neither adapter directly provides I/O byte counts, query counts, request percentiles, throughput, or native-engine bottlenecks.
+- Matching metadata cannot establish all dataset/dependency/cache/load conditions. Explicitly fingerprint relevant inputs/source and report remaining unknowns.
+- Subprocesses inherit the environment and user's permissions. This is not a sandbox. POSIX cleanup terminates remaining children in the same process group; detached descendants can escape. Other platforms guarantee only direct-child cleanup.
+- The script executes the selected workload without an interactive approval flow. Skill instructions require applicable authorization. Stderr logs, optional stdout, selected environment settings, paths, and arguments may expose application data; inspect results before sharing.
 
 ## Repository layout
 
-This repository keeps each skill in its own directory at the repository root. The current source layout is:
+Each skill lives in its own source directory at the repository root:
 
 ```text
 .
@@ -173,33 +153,33 @@ This repository keeps each skill in its own directory at the repository root. Th
 │   ├── SKILL.md
 │   ├── LICENSE
 │   ├── agents/openai.yaml
-│   ├── scripts/measure.py
-│   └── references/measurement.md
+│   ├── scripts/
+│   │   ├── measure.py
+│   │   ├── contract.py
+│   │   ├── python_worker.py
+│   │   ├── node_worker.mjs
+│   │   ├── statistics_tools.py
+│   │   ├── reporting.py
+│   │   └── demo.py
+│   └── references/
+│       ├── measurement.md
+│       └── measurement.schema.json
 └── tests/
-    └── test_measure.py
+    ├── test_measure.py
+    └── test_v2.py
 ```
 
-### Add another skill
+Create additional skill directories beside `bottleneck-lens/`, each with a unique `SKILL.md` name/description and its own focused instructions. Add scripts/references/assets only when needed, include the applicable standalone license, and document purpose/usage here. Keep published source paths stable.
 
-Create a new directory beside `bottleneck-lens/`, named after the new skill. For example, a skill named `new-skill` would have its own `new-skill/SKILL.md`. This is an example name, not a bundled skill.
-
-Each skill needs a `SKILL.md` with its own unique `name`, a precise `description`, and instructions for its workflow. Add `scripts/`, `references/`, or `assets/` only when that skill needs them. Include the applicable license with any standalone bundle. Put behavioral tests in `tests/` and document the new skill's purpose and usage in this README.
-
-Skills for different workflows can live side by side in this collection. Keep each skill focused on its own task and keep the existing `bottleneck-lens/` path stable so published installation links continue to work.
-
-The `.agents/skills/` directory holds local installed copies used to try skills in this checkout. Edit the source directories at the repository root when developing skills. Local installed copies and the root `skills-lock.json` are ignored by Git here to keep this distribution repository focused on skill sources.
+`.agents/skills/` contains local installed copies used for experiments in this checkout. Edit the root source directories when developing skills. Local installations, the root `skills-lock.json`, and Python bytecode are ignored here.
 
 ## Development
-
-Run the behavioral checks from the repository root:
 
 ```bash
 python3 -B -m unittest discover -s tests -v
 ```
 
-Tests use generated local synthetic workloads, including successful collection, before/after comparisons, malformed artifacts, failures, timeouts, and POSIX process-group cleanup. They do not establish an improvement in any real application or validate behavior across all agent hosts and operating systems.
-
-The reusable workflow lives in [SKILL.md](bottleneck-lens/SKILL.md), the collector in [measure.py](bottleneck-lens/scripts/measure.py), and the test suite in [tests/test_measure.py](tests/test_measure.py).
+Tests cover both adapters, contract compatibility, evidence integrity, correctness gating, timeouts, statistical controls, practical/CI policies, and measured before/after experiments. Node tests require Node.js 22+ and skip when Node is unavailable. These checks do not establish performance gains in a real application or coverage of every host/OS.
 
 ## License
 

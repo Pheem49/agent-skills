@@ -48,7 +48,7 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(len(data["samples"]), 3)
         self.assertTrue(all(row["wall_seconds"] > row["cpu_seconds"] for row in data["samples"]))
         self.assertGreaterEqual(data["summary"]["wall_seconds"]["min"], 0.04)
-        self.assertEqual(data["correctness"], "not_assessed")
+        self.assertEqual(data["correctness"]["status"], "not_assessed")
         self.assertEqual(data["script_sha256"], measure.digest(self.script))
 
     def test_warmups_and_samples_each_execute_the_workload(self):
@@ -97,11 +97,11 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(json.loads(output.read_text())["target"]["kind"], "module")
 
     def test_failures_and_missing_metrics_do_not_create_a_success_artifact(self):
-        for source in ("raise RuntimeError('failure')\n", "raise SystemExit(3)\n",
-                       "assert False\n", "import os\nos._exit(0)\n"):
+        for index, source in enumerate(("raise RuntimeError('failure')\n", "raise SystemExit(3)\n",
+                                       "assert False\n", "import os\nos._exit(0)\n")):
             with self.subTest(source=source):
                 self.script.write_text(source)
-                output = self.collect(ok=False)
+                output = self.collect(name=f"failed-{index}.json", ok=False)
                 self.assertFalse(output.exists())
 
     def test_timeout_aborts_without_success_artifact(self):
@@ -147,7 +147,7 @@ class CollectorTests(unittest.TestCase):
         data = json.loads(output.read_text())
         self.assertLess(data["metrics"]["wall_seconds"]["change_percent"], 0)
         self.assertEqual(data["correctness"], "not_assessed")
-        self.assertEqual(data["status"], "observed_only")
+        self.assertEqual(data["status"], "inconclusive")
 
     def test_compare_rejects_different_workloads_environments_modes_and_protocols(self):
         before = self.collect("before.json")
@@ -164,12 +164,14 @@ class CollectorTests(unittest.TestCase):
     def test_comparison_recomputes_summary_handles_zero_and_exposes_overlap(self):
         before = self.collect("original.json")
         before["samples"] = [{"wall_seconds": v, "cpu_seconds": 0} for v in (1, 2, 3)]
+        before["metrics"] = {key: before["metrics"][key] for key in before["samples"][0]}
         after = copy.deepcopy(before)
         after["samples"] = [{"wall_seconds": v, "cpu_seconds": 0} for v in (2, 3, 4)]
         for name, value in (("before.json", before), ("after.json", after)):
             (self.root / name).write_text(json.dumps(value))
         output = self.root / "comparison.json"
-        self.cli("compare", self.root / "before.json", self.root / "after.json", "--output", output)
+        self.cli("compare", self.root / "before.json", self.root / "after.json", "--output", output,
+                 "--min-samples", 3)
         metrics = json.loads(output.read_text())["metrics"]
         self.assertEqual(metrics["wall_seconds"]["change_percent"], 50)
         self.assertEqual(metrics["wall_seconds"]["variability"], "ranges_overlap")
@@ -179,7 +181,8 @@ class CollectorTests(unittest.TestCase):
         self.collect("before.json", mode="memory")
         self.collect("after.json", mode="memory")
         output = self.root / "comparison.json"
-        self.cli("compare", self.root / "before.json", self.root / "after.json", "--output", output)
+        self.cli("compare", self.root / "before.json", self.root / "after.json", "--output", output,
+                 "--primary-metric", "python_peak_bytes")
         metrics = json.loads(output.read_text())["metrics"]
         self.assertEqual(set(metrics), {"python_peak_bytes", "python_current_bytes"})
         self.assertTrue(all(row["variability"] == "insufficient_samples" for row in metrics.values()))
